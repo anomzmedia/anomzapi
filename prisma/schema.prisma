@@ -1,0 +1,57 @@
+model User {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  username     String    @unique
+  password     String
+  profilePhoto String    @default("/9.png")
+  posts        Post[]
+  comments     Comment[]
+  DMList String[] @db.ObjectId @default([])
+  noteText String?
+  noteEndDate DateTime?
+  noteTrackId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  Friends String[] @db.ObjectId @default([])
+  messagesFrom Message[] @relation("messagefrom")
+  messagesTo Message[] @relation("messageto")
+}
+
+model Post {
+  id       String    @id @default(auto()) @map("_id") @db.ObjectId
+  content  String
+  authorId String    @db.ObjectId
+  author   User      @relation(fields: [authorId], references: [id])
+  comments Comment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+}
+
+model Comment {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  content  String
+  postId   String @db.ObjectId
+  post     Post   @relation(fields: [postId], references: [id])
+  authorId String @db.ObjectId
+  author   User   @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+}
+
+model Message{
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  content String
+  fromId String @db.ObjectId
+  from User @relation("messagefrom", fields: [fromId], references: [id])
+  toId String @db.ObjectId
+  to User @relation("messageto", fields: [toId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
