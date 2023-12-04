@@ -22,6 +22,7 @@
   "scripts": {
     "start": "node .",
     "dev": "nodemon",
-    "prisma": "npx prisma db push"
+    "prisma": "npx prisma db push",
+    "postinstall": "prisma generate"
   }
 }
