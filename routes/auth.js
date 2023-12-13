@@ -74,7 +74,7 @@ router.post('/login',async(req,res) => {
 
 router.get('/me',(req,res) => {
     if(!req.user) return res.status(401).json({success:false,message:"Unauthorized!"});
-    res.json({success:true,message:"Success!",user:req.user})
+    res.json({success:true,message:"Success!",user:req.user});
 });
 
 module.exports = router;

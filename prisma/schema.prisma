@@ -5,13 +5,12 @@ model User {
   profilePhoto String    @default("/9.png")
   posts        Post[]
   comments     Comment[]
-  DMList String[] @db.ObjectId @default([])
+  DMList String[] @default([])
   noteText String?
   noteEndDate DateTime?
   noteTrackId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
-  Friends String[] @db.ObjectId @default([])
   messagesFrom Message[] @relation("messagefrom")
   messagesTo Message[] @relation("messageto")
 }

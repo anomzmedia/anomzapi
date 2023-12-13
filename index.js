@@ -68,7 +68,8 @@ app.use(async(req,res,next) => {
                 updatedAt:true,
                 noteText:true,
                 noteEndDate:true,
-                noteTrackId:true
+                noteTrackId:true,
+                DMList:true
             }
         });
 

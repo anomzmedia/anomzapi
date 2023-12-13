@@ -2,6 +2,27 @@ const express = require('express');
 
 const router = express.Router();
 
+router.get('/',async(req,res) => {
+    if(!req.user) return res.status(401).json({success:false,message:"Unauthorized!"});
+
+    let list = req.user.DMList;
+
+    for (let i = 0; i < list.length; i++) {
+        list[i] = await prisma.user.findFirst({
+            where:{
+                username:list[i],
+            },
+            select:{
+                id:true,
+                username:true,
+                profilePhoto:true
+            }
+        });
+    };
+
+    res.json({success:true,message:"Find!",find:list});
+});
+
 router.get('/:id',async(req,res) => {
     let {id} = req.params;
 
@@ -23,7 +44,22 @@ router.get('/:id',async(req,res) => {
 
     if(!find) return res.status(404).json({success:false,message:"Not found!"});
 
-    return res.json({success:true,message:"Find!",find});
+    res.json({success:true,message:"Find!",find});
+
+    if(!req.user) return;
+    
+    let list = [find.username,...req.user.DMList.filter((e) => e != find.username)];
+
+    if(list.length > 5) list = list.slice(0,-(list.length-10));
+
+    await prisma.user.update({
+        where:{
+            id:req.user.id
+        },
+        data:{
+            DMList:list
+        }
+    });
 });
 
 router.get('/:id/messages',async(req,res) => {
@@ -108,6 +144,7 @@ router.post('/:id/messages/create',async(req,res) => {
         select:{
             id:true,
             username:true,
+            DMList:true
         }
     });
 
@@ -154,7 +191,20 @@ router.post('/:id/messages/create',async(req,res) => {
         });
     });
 
-    return res.status(201).json({success:true,message:"Created!",result:message});
+    res.status(201).json({success:true,message:"Created!",result:message});
+
+    let list = [req.user.username,...find.DMList.filter((e) => e != req.user.username)];
+
+    if(list.length > 5) list = list.slice(0,-(list.length-10));
+
+    await prisma.user.update({
+        where:{
+            id:find.id
+        },
+        data:{
+            DMList:list
+        }
+    });
 });
 
 router.post('/me/note/edit',async(req,res) => {
