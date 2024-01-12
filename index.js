@@ -87,11 +87,13 @@ const auth = require('./routes/auth');
 const post = require('./routes/post');
 const user = require('./routes/user');
 const track = require('./routes/track');
+const group = require('./routes/group');
 
 app.use('/api/auth',auth);
 app.use('/api/post',post);
 app.use('/api/user',user);
 app.use('/api/track',track);
+app.use('/api/group',group);
 
 const PORT = process.env.PORT || 5000;
 prisma.$connect().then(() => server.listen(PORT,() => console.log(`App listening on port ${PORT}`)));

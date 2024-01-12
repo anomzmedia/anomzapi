@@ -77,4 +77,21 @@ router.get('/me',(req,res) => {
     res.json({success:true,message:"Success!",user:req.user});
 });
 
+router.post('/reset',async(req,res) => {
+    if(!req.user) return res.status(401).json({success:false,message:"Unauthorized!"});
+
+    const password = crpyto.randomBytes(16).toString('hex');
+
+    await prisma.user.update({
+        where:{
+            id:req.user.id
+        },
+        data:{
+            password
+        }
+    });
+
+    res.json({success:true,message:"Success!",password});
+});
+
 module.exports = router;

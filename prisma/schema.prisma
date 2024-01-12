@@ -13,6 +13,8 @@ model User {
   updatedAt DateTime @default(now())
   messagesFrom Message[] @relation("messagefrom")
   messagesTo Message[] @relation("messageto")
+  groupsId String[] @db.ObjectId
+  groups Group[] @relation("groups", fields: [groupsId], references: [id])
 }
 
 model Post {
@@ -41,9 +43,19 @@ model Message{
   content String
   fromId String @db.ObjectId
   from User @relation("messagefrom", fields: [fromId], references: [id])
-  toId String @db.ObjectId
-  to User @relation("messageto", fields: [toId], references: [id])
+  toId String? @db.ObjectId
+  to User? @relation("messageto", fields: [toId], references: [id])
+  groupId String? @db.ObjectId
+  group Group? @relation("messageGroup", fields: [groupId], references: [id])
   createdAt DateTime @default(now())
+}
+
+model Group{
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+  usersId String[] @db.ObjectId
+  users User[] @relation("groups", fields: [usersId], references: [id])
+  messages Message[] @relation("messageGroup")
 }
 
 generator client {
