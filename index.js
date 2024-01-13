@@ -19,7 +19,7 @@ const io = new Server(server,{
 
 globalThis.sockets = [];
 
-io.addListener('connection',(s) => {
+io.of("api").addListener('connection',(s) => {
     s.on('disconnect',() => {
         sockets = sockets.filter((b) => b.id != s.id);
     });
