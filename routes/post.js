@@ -30,7 +30,7 @@ router.get('/all',async(req,res) => {
 
     if(page < 0) page = 0;
 
-    const postPerpage = 3;
+    const postPerpage = 20;
 
     let posts = await prisma.post.findMany({
         select:{

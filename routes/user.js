@@ -44,6 +44,12 @@ router.get('/:id',async(req,res) => {
 
     if(!find) return res.status(404).json({success:false,message:"Not found!"});
 
+    let active = sockets.find((e) => e.user.id == find.id);
+    if(!active) active = false;
+    else active = true;
+
+    find.active = active;
+
     res.json({success:true,message:"Find!",find});
 
     if(!req.user) return;
