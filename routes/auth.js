@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const crpyto = require('crypto');
 const rateLimit = require('express-rate-limit');
+const auth = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -72,14 +73,11 @@ router.post('/login',async(req,res) => {
     }
 });
 
-router.get('/me',(req,res) => {
-    if(!req.user) return res.status(401).json({success:false,message:"Unauthorized!"});
+router.get('/me',auth,(req,res) => {
     res.json({success:true,message:"Success!",user:req.user});
 });
 
-router.post('/reset',async(req,res) => {
-    if(!req.user) return res.status(401).json({success:false,message:"Unauthorized!"});
-
+router.post('/reset',auth,async(req,res) => {
     const password = crpyto.randomBytes(16).toString('hex');
 
     await prisma.user.update({

@@ -1,5 +1,6 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const auth = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -53,12 +54,12 @@ router.get('/all',async(req,res) => {
         skip:page*postPerpage
     });
 
-    return res.json({success:true,message:"Find!",page,posts});
+    posts.forEach((p) => p.content = p.content.slice(0,128));
+
+    res.json({success:true,message:"Find!",page,posts});
 });
 
-router.post('/create',limiter,async(req,res) => {
-    if(!req.user) return res.status(401).json({success:false,message:"Unauthorized!"});
-
+router.post('/create',auth,limiter,async(req,res) => {
     const {content} = req.body;
     if(!content || content.length > 1024) return res.status(400).json({success:false,message:"Body err!"});
 
@@ -85,9 +86,9 @@ router.post('/create',limiter,async(req,res) => {
             }
         })
     
-        return res.status(201).json({success:true,message:"Created!",post});
+        res.status(201).json({success:true,message:"Created!",post});
     } catch (error) {
-        return res.status(500).json({success:false,message:error.message});
+        res.status(500).json({success:false,message:error.message});
     }
 });
 
@@ -110,38 +111,61 @@ router.get('/:id',async(req,res) => {
                     }
                 },
                 createdAt:true,
-                updatedAt:true,
-                comments:{
-                    orderBy:{
-                        createdAt:"desc"
-                    },
-                    select:{
-                        id:true,
-                        content:true,
-                        author:{
-                            select:{
-                                id:true,
-                                username:true,
-                                profilePhoto:true
-                            },
-                        },
-                        createdAt:true
-                    }
-                }
+                updatedAt:true
             }
         });
     
-        if(!find) return res.status(404).json({success:false,message:"Not found!"});
+        if(!find) return res.status(400).json({success:false,message:"Post not found!"});
     
-        return res.json({success:true,message:"Find!",find});
+        res.json({success:true,message:"Find!",find});
     } catch (error) {
-        return res.json({success:false,message:error.message});
+        res.json({success:false,message:error.message});
     }
 });
 
-router.post('/:id/comments/create',commentLimiter,async(req,res) => {
-    if(!req.user) return res.status(401).json({success:false,message:"Unauthorized!"});
+router.get('/:id/comments',async(req,res) => {
+    const {id} = req.params;
 
+    let {page} = req.query;
+    if(!page) page = 0;
+    page = Number(page);
+
+    if(page < 0) page = 0;
+
+    const commentPerpage = 20;
+
+    try {
+        let find = await prisma.comment.findMany({
+            select:{
+                id:true,
+                content:true,
+                author:{
+                    select:{
+                        id:true,
+                        username:true,
+                        profilePhoto:true,
+                    }
+                },
+                createdAt:true,
+                updatedAt:true
+            },
+            where:{
+                postId:id
+            },
+            orderBy:{
+                createdAt:"desc"
+            },
+            take:commentPerpage,
+            skip:page*commentPerpage
+        });
+
+        res.json({success:true,message:"Find!",find});
+    } catch (error) {
+        res.status(500).json({success:false,message:error.message});
+    }
+});
+
+router.post('/:id/comments/create',auth,commentLimiter,async(req,res) => {
     const {id} = req.params;
     const {content} = req.body;
 
@@ -157,7 +181,7 @@ router.post('/:id/comments/create',commentLimiter,async(req,res) => {
             },
         });
     
-        if(!find) return res.status(404).json({success:false,message:"Post not found!"});
+        if(!find) return res.status(400).json({success:false,message:"Post not found!"});
 
         let comment = await prisma.comment.create({
             data:{
@@ -183,9 +207,9 @@ router.post('/:id/comments/create',commentLimiter,async(req,res) => {
             }
         })
     
-        return res.status(201).json({success:true,message:"Created!",comment});
+        res.status(201).json({success:true,message:"Created!",comment});
     } catch (error) {
-        return res.status(500).json({success:false,message:error.message});
+        res.status(500).json({success:false,message:error.message});
     }
 });
 

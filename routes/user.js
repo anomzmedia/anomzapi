@@ -1,10 +1,10 @@
 const express = require('express');
+const auth = require('../middleware/auth');
+const { messageLimiter } = require('../middleware/limiters');
 
 const router = express.Router();
 
-router.get('/',async(req,res) => {
-    if(!req.user) return res.status(401).json({success:false,message:"Unauthorized!"});
-
+router.get('/',auth,async(req,res) => {
     let list = req.user.DMList;
 
     for (let i = 0; i < list.length; i++) {
@@ -42,7 +42,7 @@ router.get('/:id',async(req,res) => {
         }
     });
 
-    if(!find) return res.status(404).json({success:false,message:"Not found!"});
+    if(!find) return res.status(400).json({success:false,message:"User not found!"});
 
     let active = sockets.find((e) => e.user.id == find.id);
     if(!active) active = false;
@@ -52,7 +52,7 @@ router.get('/:id',async(req,res) => {
 
     res.json({success:true,message:"Find!",find});
 
-    if(!req.user) return;
+    /*if(!req.user) return;
     
     let list = [find.username,...req.user.DMList.filter((e) => e != find.username)];
 
@@ -65,12 +65,10 @@ router.get('/:id',async(req,res) => {
         data:{
             DMList:list
         }
-    });
+    });*/
 });
 
-router.get('/:id/messages',async(req,res) => {
-    if(!req.user) return res.status(401).json({success:false,message:"Unauthorized!"});
-
+router.get('/:id/messages',auth,async(req,res) => {
     let {page} = req.query;
     if(!page) page = 0;
     page = Number(page);
@@ -132,12 +130,10 @@ router.get('/:id/messages',async(req,res) => {
         }
     });
 
-    return res.json({success:true,message:"Find!",messages});
+    res.json({success:true,message:"Find!",messages});
 });
 
-router.post('/:id/messages/create',async(req,res) => {
-    if(!req.user) return res.status(401).json({success:false,message:"Unauthorized!"});
-
+router.post('/:id/messages/create',auth,messageLimiter,async(req,res) => {
     let {id} = req.params;
 
     const {content} = req.body;
@@ -154,7 +150,7 @@ router.post('/:id/messages/create',async(req,res) => {
         }
     });
 
-    if(!find) return res.status(404).json({success:false,message:"Not found!"});
+    if(!find) return res.status(400).json({success:false,message:"User not found!"});
 
     let message = await prisma.message.create({
         data:{
@@ -166,13 +162,14 @@ router.post('/:id/messages/create',async(req,res) => {
             },
             to:{
                 connect:{
-                    username:id
+                    id:find.id
                 }
             }
         },
         select:{
             id:true,
             content:true,
+            createdAt:true,
             from:{
                 select:{
                     id:true,
@@ -201,7 +198,7 @@ router.post('/:id/messages/create',async(req,res) => {
 
     let list = [req.user.username,...find.DMList.filter((e) => e != req.user.username)];
 
-    if(list.length > 5) list = list.slice(0,-(list.length-10));
+    if(list.length > 10) list = list.slice(0,-(list.length-10));
 
     await prisma.user.update({
         where:{
@@ -213,9 +210,7 @@ router.post('/:id/messages/create',async(req,res) => {
     });
 });
 
-router.post('/me/note/edit',async(req,res) => {
-    if(!req.user) return res.status(401).json({success:false,message:"Unauthorized!"});
-
+router.post('/me/note/edit',auth,async(req,res) => {
     const {text,track_id} = req.body;
 
     if(text && text.length > 32) return res.status(400).json({success:false,message:"Max text length 32!"});
@@ -226,13 +221,13 @@ router.post('/me/note/edit',async(req,res) => {
             id:req.user.id
         },
         data:{
-            noteText:text ? text : null,
-            noteTrackId:track_id ? track_id : null,
+            noteText:text ?? null,
+            noteTrackId:track_id ?? null,
             noteEndDate:new Date(Date.now()+24*60*60*1000),
         }
     });
 
-    return res.json({success:true,message:"Updated!"});
+    res.json({success:true,message:"Updated!"});
 });
 
 module.exports = router;
