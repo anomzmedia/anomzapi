@@ -69,13 +69,7 @@ router.get('/:id',async(req,res) => {
 });
 
 router.get('/:id/messages',auth,async(req,res) => {
-    let {page} = req.query;
-    if(!page) page = 0;
-    page = Number(page);
-
-    if(page < 0) page = 0;
-
-    const messagesPerPage = 10;
+    const messagesPerPage = 30;
 
     let {id} = req.params;
 
@@ -91,7 +85,9 @@ router.get('/:id/messages',auth,async(req,res) => {
 
     if(!find) return res.status(400).json({success:false,message:"User not found!"});
 
-    let messages = await prisma.message.findMany({
+    const {cursor} = req.query;
+
+    let query = {
         where:{
             OR:[
                 {
@@ -108,7 +104,6 @@ router.get('/:id/messages',auth,async(req,res) => {
             createdAt:"desc"
         },
         take:messagesPerPage,
-        skip:page*messagesPerPage,
         select:{
             id:true,
             content:true,
@@ -128,7 +123,14 @@ router.get('/:id/messages',auth,async(req,res) => {
                 }
             }
         }
-    });
+    };
+
+    if(cursor) {
+        query["cursor"] = {id:cursor};
+        query["skip"] = 1;
+    }
+
+    let messages = await prisma.message.findMany(query);
 
     res.json({success:true,message:"Find!",messages});
 });

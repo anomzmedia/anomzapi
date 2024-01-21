@@ -25,15 +25,11 @@ const commentLimiter = rateLimit({
 });
 
 router.get('/all',async(req,res) => {
-    let {page} = req.query;
-    if(!page) page = 0;
-    page = Number(page);
+    const postPerpage = 30;
 
-    if(page < 0) page = 0;
+    const {cursor} = req.query;
 
-    const postPerpage = 20;
-
-    let posts = await prisma.post.findMany({
+    let query = {
         select:{
             id:true,
             content:true,
@@ -51,12 +47,18 @@ router.get('/all',async(req,res) => {
             createdAt:"desc"
         },
         take:postPerpage,
-        skip:page*postPerpage
-    });
+    }
+
+    if(cursor){
+        query["skip"] = 1;
+        query["cursor"] = {id:cursor};
+    }
+
+    let posts = await prisma.post.findMany(query);
 
     posts.forEach((p) => p.content = p.content.slice(0,128));
 
-    res.json({success:true,message:"Find!",page,posts});
+    res.json({success:true,message:"Find!",posts});
 });
 
 router.post('/create',auth,limiter,async(req,res) => {
@@ -126,16 +128,12 @@ router.get('/:id',async(req,res) => {
 router.get('/:id/comments',async(req,res) => {
     const {id} = req.params;
 
-    let {page} = req.query;
-    if(!page) page = 0;
-    page = Number(page);
+    const commentPerpage = 30;
 
-    if(page < 0) page = 0;
-
-    const commentPerpage = 20;
+    const {cursor} = req.query;
 
     try {
-        let find = await prisma.comment.findMany({
+        let query = {
             select:{
                 id:true,
                 content:true,
@@ -156,8 +154,14 @@ router.get('/:id/comments',async(req,res) => {
                 createdAt:"desc"
             },
             take:commentPerpage,
-            skip:page*commentPerpage
-        });
+        }
+
+        if(cursor){
+            query["skip"] = 1;
+            query["cursor"] = {id:cursor};
+        }
+
+        let find = await prisma.comment.findMany(query);
 
         res.json({success:true,message:"Find!",find});
     } catch (error) {

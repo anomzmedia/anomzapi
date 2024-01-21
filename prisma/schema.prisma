@@ -5,7 +5,6 @@ model User {
   profilePhoto String    @default("/9.png")
   posts        Post[]
   comments     Comment[]
-  DMList String[] @default([])
   noteText String?
   noteEndDate DateTime?
   noteTrackId String?
@@ -13,8 +12,19 @@ model User {
   updatedAt DateTime @default(now())
   messagesFrom Message[] @relation("messagefrom")
   messagesTo Message[] @relation("messageto")
+  DMList String[] @default([])
   groupsId String[] @db.ObjectId
   groups Group[] @relation("groups", fields: [groupsId], references: [id])
+  followers Follows[] @relation("following")
+  followings Follows[] @relation("follower")
+}
+
+model Follows{
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  followerId  String @db.ObjectId
+  followingId String @db.ObjectId
+  following User @relation("following", fields: [followingId], references: [id])
+  follower User @relation("follower", fields: [followerId], references: [id])
 }
 
 model Post {
