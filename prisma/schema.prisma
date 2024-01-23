@@ -15,6 +15,7 @@ model User {
   DMList String[] @default([])
   groupsId String[] @db.ObjectId
   groups Group[] @relation("groups", fields: [groupsId], references: [id])
+  ownerGroups Group[] @relation("ownerGroups")
   followers Follows[] @relation("following")
   followings Follows[] @relation("follower")
 }
@@ -51,21 +52,34 @@ model Comment {
 model Message{
   id       String @id @default(auto()) @map("_id") @db.ObjectId
   content String
-  fromId String @db.ObjectId
-  from User @relation("messagefrom", fields: [fromId], references: [id])
+  fromId String? @db.ObjectId
+  from User? @relation("messagefrom", fields: [fromId], references: [id])
+
   toId String? @db.ObjectId
   to User? @relation("messageto", fields: [toId], references: [id])
+  
   groupId String? @db.ObjectId
   group Group? @relation("messageGroup", fields: [groupId], references: [id])
+
+  system Boolean @default(false)
+
   createdAt DateTime @default(now())
 }
 
 model Group{
   id String @id @default(auto()) @map("_id") @db.ObjectId
   name String
+  profilePhoto String @default("/anomz2.png")
+
   usersId String[] @db.ObjectId
   users User[] @relation("groups", fields: [usersId], references: [id])
+
+  ownerId String @db.ObjectId
+  owner User @relation("ownerGroups", fields: [ownerId], references: [id])
+
   messages Message[] @relation("messageGroup")
+
+  createdAt DateTime @default(now())
 }
 
 generator client {

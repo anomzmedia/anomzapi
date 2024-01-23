@@ -48,6 +48,8 @@ app.use(cors({
 app.use(bodyparser.json());
 app.use(bodyparser.urlencoded({extended:false}));
 
+app.set('trust proxy',1);
+
 app.use(async(req,res,next) => {
     try {
         let authorization = req.headers.authorization;

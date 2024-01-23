@@ -27,15 +27,17 @@ router.post('/create',auth,limiter,async(req,res) => {
         data:{
             name,
             usersId:[...users,req.user.id],
+            messages:{
+                create:{
+                    content:"good chats",
+                    system:true,
+                }
+            },
+            ownerId:req.user.id,
         },
         select:{
             id:true,
             name:true,
-            _count:{
-                select:{
-                    users:true
-                }
-            }
         }
     });
 
@@ -52,17 +54,38 @@ router.get('/all',auth,async(req,res) => {
         select:{
             id:true,
             name:true,
-            users:{
-                select:{
-                    id:true,
-                    username:true,
-                    profilePhoto:true
-                }
-            }
+            profilePhoto:true
+        },
+        orderBy:{
+            createdAt:"desc"
         }
     });
 
-    res.json({find});
+    res.json({success:true,find});
+
+    /*let find = (await prisma.message.findMany({
+        where:{
+            group:{
+                usersId:{
+                    has:req.user.id
+                }
+            }
+        },
+        select:{
+            group:{
+                select:{
+                    id:true,
+                    name:true,
+                    usersId:true
+                }
+            }
+        },
+        orderBy:{
+            createdAt:"desc"
+        }
+    })).map((e) => e.group);*/
+
+    //res.json({success:true,find})
 });
 
 router.get('/:id',async(req,res) => {
@@ -76,56 +99,66 @@ router.get('/:id',async(req,res) => {
             },
         },
         select:{
+            id:true,
             name:true,
+            profilePhoto:true,
             users:{
                 select:{
                     id:true,
                     username:true,
                     profilePhoto:true
                 }
-            }
+            },
+            ownerId:true
         }
     });
 
     res.json({find});
 });
 
-router.get('/:id/messages',async(req,res) => {
+router.get('/:id/messages',auth,async(req,res) => {
     const {id} = req.params;
 
-    let find = await prisma.group.findFirst({
+    const {cursor} = req.query;
+
+    let query = {
         where:{
-            id,
-            usersId:{
-                has:req.user.id
-            },
+            group:{
+                id,
+                usersId:{
+                    has:req.user.id
+                }
+            }
         },
         select:{
-            name:true,
-            users:{
+            id:true,
+            content:true,
+            from:{
                 select:{
                     id:true,
                     username:true,
                     profilePhoto:true
                 }
             },
-            messages:{
-                select:{
-                    id:true,
-                    content:true,
-                    from:{
-                        select:{
-                            id:true,
-                            username:true,
-                            profilePhoto:true,
-                        }
-                    }
-                }
-            }
+            createdAt:true,
+            system:true
+        },
+        take:30,
+        orderBy:{
+            createdAt:"desc"
         }
-    });
+    };
 
-    res.json({find});
+    if(cursor) {
+        query["cursor"] = {id:cursor};
+        query["skip"] = 1;
+    }
+
+    let find = await prisma.message.findMany(query);
+
+
+    
+    res.json({success:true,find});
 });
 
 router.post('/:id/messages/create',auth,messageLimiter,async(req,res) => {
@@ -139,7 +172,8 @@ router.post('/:id/messages/create',auth,messageLimiter,async(req,res) => {
             },
         },
         select:{
-            id:true
+            id:true,
+            usersId:true
         }
     });
 
@@ -166,6 +200,15 @@ router.post('/:id/messages/create',auth,messageLimiter,async(req,res) => {
                 }
             }
         }
+    });
+
+    find.usersId.forEach((i) => {
+        sockets.filter((b) => b.user.id == i && i != req.user.id).forEach((sock) => {
+            sock.emit("message",{
+                group:find.id,
+                message
+            });
+        });
     });
 
     res.json({success:true,message:"Created!",message});
