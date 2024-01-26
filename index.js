@@ -18,10 +18,42 @@ const io = new Server(server,{
 });
 
 globalThis.sockets = [];
+globalThis.voices = [];
 
 io.addListener('connection',(s) => {
     s.on('disconnect',() => {
-        sockets = sockets.filter((b) => b.id != s.id);
+        sockets = sockets.filter((b) => b.id != s?.id);
+        voices = voices.filter((b) => b.from != s?.user?.id);
+    });
+
+    s.on('voicejoin',(data) => {
+        if(!s.user) return;
+
+        if(!data) return;
+
+        voices = voices.filter((e) => e.from != s.user.id && e.to != data);
+
+        voices.push({from:s.user.id,to:data});
+    });
+
+    s.on('voiceleft',(data) => {
+        if(!s.user) return;
+
+        if(!data) return;
+
+        voices = voices.filter((e) => e.from != s.user.id && e.to != data);
+    });
+
+    s.on('voice',(data) => {
+        if(!s.user || !data || !data.to || !data.buffer) return;
+
+        let find = sockets.find((e) => e.user.id == data.to);
+        let find1 = voices.find((e) => e.from == s.user.id && e.to == data.to);
+        let find2 = voices.find((e) => e.to == s.user.id && e.from == data.to);
+
+        if(!find || !find1 || !find2) return;
+
+        find.emit('voice',data.buffer);
     });
 
     s.on('login',(b) => {
@@ -33,6 +65,10 @@ io.addListener('connection',(s) => {
         } catch (error) {
             
         }
+    });
+
+    s.on("ping", (callback) => {
+        callback();
     });
 });
 

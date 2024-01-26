@@ -54,7 +54,7 @@ router.get('/all',auth,async(req,res) => {
         select:{
             id:true,
             name:true,
-            profilePhoto:true
+            profilePhoto:true,
         },
         orderBy:{
             createdAt:"desc"
@@ -62,33 +62,9 @@ router.get('/all',auth,async(req,res) => {
     });
 
     res.json({success:true,find});
-
-    /*let find = (await prisma.message.findMany({
-        where:{
-            group:{
-                usersId:{
-                    has:req.user.id
-                }
-            }
-        },
-        select:{
-            group:{
-                select:{
-                    id:true,
-                    name:true,
-                    usersId:true
-                }
-            }
-        },
-        orderBy:{
-            createdAt:"desc"
-        }
-    })).map((e) => e.group);*/
-
-    //res.json({success:true,find})
 });
 
-router.get('/:id',async(req,res) => {
+router.get('/:id',auth,async(req,res) => {
     const {id} = req.params;
 
     let find = await prisma.group.findFirst({
@@ -113,7 +89,9 @@ router.get('/:id',async(req,res) => {
         }
     });
 
-    res.json({find});
+    if(!find) return res.status(400).json({success:false,message:"Not found!"});
+
+    res.json({success:true,message:"Find!",find});
 });
 
 router.get('/:id/messages',auth,async(req,res) => {
@@ -155,8 +133,6 @@ router.get('/:id/messages',auth,async(req,res) => {
     }
 
     let find = await prisma.message.findMany(query);
-
-
     
     res.json({success:true,find});
 });
