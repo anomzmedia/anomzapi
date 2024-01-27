@@ -13,14 +13,57 @@ const app = express();
 const server = http.createServer(app);
 
 const { Server } = require("socket.io");
-const io = new Server(server,{
+globalThis.io = new Server(server,{
     cors:"*"
 });
 
-globalThis.sockets = [];
-globalThis.voices = [];
+//globalThis.sockets = [];
+//globalThis.voices = [];
 
-io.addListener('connection',(s) => {
+globalThis.sockets = {};
+
+io.use((sock,next) => {
+    let token = sock.handshake.auth?.token;
+    if(!token) return next(new Error('Authentication error'));
+
+    jwt.verify(token,process.env.SECRET,async(err,decoded) => {
+        if(err) return next(new Error('Authentication error'));
+
+        let find = await prisma.user.findFirst({
+            where:{
+                id:decoded.user.id
+            },
+            select:{
+                id:true,
+                username:true,
+                profilePhoto:true,
+                noteText:true,
+                noteTrackId:true,
+                noteEndDate:true,
+                createdAt:true,
+                updatedAt:true,
+            }
+        })
+
+        if(!find) return next(new Error('Authentication error'));
+
+        sock.user = find;
+        next();
+    });
+}).on('connection',(sock) => {
+    sockets[sock.user.id] = sock.id;
+
+    sock.on('disconnect',() => {
+        delete sockets[sock.user.id]
+    });
+
+    sock.on('ping',(callback) => {
+        if(!callback || typeof(callback) != "function") return;
+        callback();
+    });
+});
+
+/*io.addListener('connection',(s) => {
     s.on('disconnect',() => {
         sockets = sockets.filter((b) => b.id != s?.id);
         voices = voices.filter((b) => b.from != s?.user?.id);
@@ -70,7 +113,7 @@ io.addListener('connection',(s) => {
     s.on("ping", (callback) => {
         callback();
     });
-});
+});*/
 
 app.use(morgan('dev'));
 

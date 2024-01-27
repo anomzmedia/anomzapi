@@ -178,13 +178,17 @@ router.post('/:id/messages/create',auth,messageLimiter,async(req,res) => {
         }
     });
 
-    find.usersId.forEach((i) => {
-        sockets.filter((b) => b.user.id == i && i != req.user.id).forEach((sock) => {
+    find.usersId.filter((e) => e != req.user.id).forEach((i) => {
+        /*sockets.filter((b) => b.user.id == i && i != req.user.id).forEach((sock) => {
             sock.emit("message",{
                 group:find.id,
                 message
             });
-        });
+        });*/
+        io.sockets.sockets.get(sockets[i])?.emit("message",{
+            group:find.id,
+            message
+        })
     });
 
     res.json({success:true,message:"Created!",message});

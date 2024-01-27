@@ -44,7 +44,8 @@ router.get('/:id',async(req,res) => {
 
     if(!find) return res.status(400).json({success:false,message:"User not found!"});
 
-    let active = sockets.find((e) => e.user.id == find.id);
+    //let active = sockets.find((e) => e.user.id == find.id);
+    let active = sockets[find.id];
     if(!active) active = false;
     else active = true;
 
@@ -189,12 +190,17 @@ router.post('/:id/messages/create',auth,messageLimiter,async(req,res) => {
         }
     });
 
-    sockets.filter((b) => b.user.id == find.id).forEach((sock) => {
+    /*sockets.filter((b) => b.user.id == find.id).forEach((sock) => {
         sock.emit("message",{
             channel:req.user.id,
             message
         });
-    });
+    });*/
+
+    io.sockets.sockets.get(sockets[find.id])?.emit("message",{
+        channel:req.user.id,
+        message
+    })
 
     res.status(201).json({success:true,message:"Created!",result:message});
 
