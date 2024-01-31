@@ -5,10 +5,20 @@ const morgan = require('morgan');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const http = require('http');
+const fileUpload = require('express-fileupload');
+const { default: ImgurClient } = require('imgur');
 
 const {PrismaClient} = require('@prisma/client');
 
 const app = express();
+
+app.use(fileUpload({
+ useTempFiles:false,
+ abortOnLimit:true,
+ limits:{
+    fileSize:10485760
+ },
+}));
 
 const server = http.createServer(app);
 
@@ -19,6 +29,12 @@ globalThis.io = new Server(server,{
 
 //globalThis.sockets = [];
 //globalThis.voices = [];
+
+globalThis.imgurClient = new ImgurClient({
+    clientId: process.env.IMGUR_CLIENT_ID,
+    clientSecret: process.env.IMGUT_CLIENT_SECRET,
+    //refreshToken: process.env.IMGUR_REFRESH_TOKEN,
+});
 
 globalThis.sockets = {};
 
@@ -175,6 +191,13 @@ app.use('/api/post',post);
 app.use('/api/user',user);
 app.use('/api/track',track);
 app.use('/api/group',group);
+
+app.get('/api/stats',async(req,res) => {
+    let posts = await prisma.post.count();
+    let users = await prisma.user.count();
+    let messages = await prisma.message.count();
+    res.json({posts,users,messages});
+});
 
 const PORT = process.env.PORT || 5000;
 prisma.$connect().then(() => server.listen(PORT,() => console.log(`App listening on port ${PORT}`)));

@@ -218,6 +218,28 @@ router.post('/:id/messages/create',auth,messageLimiter,async(req,res) => {
     });
 });
 
+router.put("/me",auth,async(req,res) => {
+    const {avatar} = req.files;
+    if(!avatar) return res.json({success:false,message:"Provide a avatar!"});
+
+    let im = await imgurClient.upload({
+        image:avatar.data
+    });
+
+    if(!im.success) return res.json({success:false,message:im.data});
+
+    await prisma.user.update({
+        where:{
+            id:req.user.id
+        },
+        data:{
+            profilePhoto:im.data.link
+        }
+    });
+
+    res.json({success:true,avatar:im.data.link});
+});
+
 router.post('/me/note/edit',auth,async(req,res) => {
     const {text,track_id} = req.body;
 
