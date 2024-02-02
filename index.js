@@ -28,8 +28,6 @@ globalThis.io = new Server(server,{
 });
 
 //globalThis.sockets = [];
-//globalThis.voices = [];
-
 globalThis.imgurClient = new ImgurClient({
     clientId: process.env.IMGUR_CLIENT_ID,
     clientSecret: process.env.IMGUT_CLIENT_SECRET,
@@ -37,6 +35,7 @@ globalThis.imgurClient = new ImgurClient({
 });
 
 globalThis.sockets = {};
+globalThis.voices = [];
 
 io.use((sock,next) => {
     let token = sock.handshake.auth?.token;
@@ -76,6 +75,33 @@ io.use((sock,next) => {
     sock.on('ping',(callback) => {
         if(!callback || typeof(callback) != "function") return;
         callback();
+    });
+
+    sock.on('voicejoin',(data) => {
+        if(!data) return;
+
+        voices = voices.filter((e) => e.from != sock.user.id && e.to != data);
+
+        voices.push({from:sock.user.id,to:data});
+    });
+
+    sock.on('voiceleft',(data) => {
+        if(!data) return;
+
+        voices = voices.filter((e) => e.from != sock.user.id && e.to != data);
+    });
+
+    sock.on('voice',(data) => {
+        if(!data || !data.to || !data.buffer) return;
+
+        let find = sockets[data.to];
+
+        let find1 = voices.find((e) => e.from == sock.user.id && e.to == data.to);
+        let find2 = voices.find((e) => e.to == sock.user.id && e.from == data.to);
+
+        if(!find || !find1 || !find2) return;
+
+        io.sockets.sockets.get(find).emit("voice",data.buffer);
     });
 });
 

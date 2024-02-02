@@ -216,6 +216,19 @@ router.post('/:id/messages/create',auth,messageLimiter,async(req,res) => {
             DMList:list
         }
     });
+
+    list = [find.username,...req.user.DMList.filter((e) => e != find.username)];
+
+    if(list.length > 10) list = list.slice(0,-(list.length-10));
+
+    await prisma.user.update({
+        where:{
+            id:req.user.id
+        },
+        data:{
+            DMList:list
+        }
+    });
 });
 
 router.put("/me",auth,async(req,res) => {
