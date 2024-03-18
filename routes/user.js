@@ -231,6 +231,103 @@ router.post('/:id/messages/create',auth,messageLimiter,async(req,res) => {
     });
 });
 
+router.post('/:id/voice/create',async(req,res) => {
+    const {id} = req.params;
+
+    try {
+        let voiceChat = await prisma.voiceChat.create({
+            data:{
+                from:{
+                    connect:{
+                        id:req.user.id
+                    }
+                },
+                to:{
+                    connect:{
+                        username:id
+                    }
+                }
+            },
+            select:{
+                id:true,
+                fromId:true,
+                toId:true
+            }
+        });
+
+        await prisma.message.create({
+            data:{
+                content:`Created new voiceChat: https://anomz.software/dashboard/${id}/voice/${voiceChat.id}`,
+                from:{
+                    connect:{
+                        id:req.user.id
+                    }
+                },
+                to:{
+                    connect:{
+                        username:id
+                    }
+                },
+                system:true,
+            }
+        });
+
+        res.json({success:true,voiceChat});
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({success:false,message:"Server err!"});
+    }
+});
+
+router.get('/:id/voice/:voiceChatId',async(req,res) => {
+    const {id,voiceChatId} = req.params;
+
+    try {
+        let find = await prisma.voiceChat.findFirst({
+            where:{
+                id:voiceChatId,
+                OR:[
+                    {
+                        fromId:req.user.id,
+                        to:{
+                            username:id
+                        }
+                    },
+                    {
+                        from:{
+                            username:id
+                        },
+                        toId:req.user.id
+                    }
+                ]
+            },
+            select:{
+                id:true,
+                from:{
+                    select:{
+                        id:true,
+                        username:true,
+                        profilePhoto:true
+                    }
+                },
+                to:{
+                    select:{
+                        id:true,
+                        username:true,
+                        profilePhoto:true
+                    }
+                }
+            }
+        });
+
+        if(!find) return res.json({success:false,message:"Not found!"});
+
+        res.json({success:true,find});
+    } catch (error) {
+        res.status(500).json({sucess:false,message:"Server err!"});
+    }
+});
+
 router.put("/me",auth,async(req,res) => {
     const {avatar} = req.files;
     if(!avatar) return res.json({success:false,message:"Provide a avatar!"});

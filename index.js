@@ -35,7 +35,12 @@ globalThis.imgurClient = new ImgurClient({
 });
 
 globalThis.sockets = {};
+
 globalThis.voices = [];
+
+globalThis.waitingOffers = [];
+
+globalThis.activeCalls = [];
 
 io.use((sock,next) => {
     let token = sock.handshake.auth?.token;
@@ -69,7 +74,13 @@ io.use((sock,next) => {
     sockets[sock.user.id] = sock.id;
 
     sock.on('disconnect',() => {
-        delete sockets[sock.user.id]
+        delete sockets[sock.user.id];
+
+        waitingOffers.filter((e) => e.from == sock.user.id).forEach((t) => {
+            io.sockets.sockets.get(sockets[t.to])?.emit("cancelOfferClient",{from:t.from});
+        });
+
+        waitingOffers = waitingOffers.filter((e) => e.from != sock.user.id);
     });
 
     sock.on('ping',(callback) => {
@@ -77,31 +88,63 @@ io.use((sock,next) => {
         callback();
     });
 
-    sock.on('voicejoin',(data) => {
-        if(!data) return;
-
-        voices = voices.filter((e) => e.from != sock.user.id && e.to != data);
-
-        voices.push({from:sock.user.id,to:data});
+    sock.on("getWaitingOffers",(callback) => {
+        let find = waitingOffers.filter((e) => e.to == sock.user.id);
+        callback({success:true,find});
     });
 
-    sock.on('voiceleft',(data) => {
-        if(!data) return;
+    sock.on("cancelOffer",({to}) => {
+        if(!to) return;
 
-        voices = voices.filter((e) => e.from != sock.user.id && e.to != data);
+        waitingOffers.filter((e) => e.from == sock.user.id && e.to == to).forEach((tt) => {
+            io.sockets.sockets.get(sockets[tt.to])?.emit("cancelOfferClient",{
+                from:sock.user.id
+            });
+        });
+
+        waitingOffers = waitingOffers.filter((e) => e.from != sock.user.id && e.to != to);
     });
 
-    sock.on('voice',(data) => {
-        if(!data || !data.to || !data.buffer) return;
+    sock.on("makeOffer",({offer,to}) => {
+        if(!offer || !to) return;
 
-        let find = sockets[data.to];
+        waitingOffers.push({from:sock.user.id,to,offer,waiting:true});
 
-        let find1 = voices.find((e) => e.from == sock.user.id && e.to == data.to);
-        let find2 = voices.find((e) => e.to == sock.user.id && e.from == data.to);
+        io.sockets.sockets.get(sockets[to])?.emit("madeOffer",{
+            from:sock.user.id,
+            offer
+        });
+    });
 
-        if(!find || !find1 || !find2) return;
+    sock.on("makeAnswer",({answer,to}) => {
+        if(!answer || !to) return;
 
-        io.sockets.sockets.get(find).emit("voice",data.buffer);
+        let find = waitingOffers.find((e) => e.from == to && e.to == sock.user.id);
+        if(!find) return;
+
+        find.waiting = false;
+
+        io.sockets.sockets.get(sockets[to])?.emit("madeAnswer",{
+            from:sock.user.id,
+            answer
+        });
+    });
+
+    sock.on("rejectOffer",({to}) => {
+        let find = waitingOffers.find((e) => e.from == to && e.to == sock.user.id);
+        if(!find) return;
+
+        io.sockets.sockets.get(sockets[find.from])?.emit("rejectedOffer",{from:find.to});
+
+        waitingOffers = waitingOffers.filter((e) => e.from != to && e.to != sock.user.id);
+    });
+
+    sock.on("candidate",({candidate,to}) => {
+        console.log(candidate);
+        console.log(to)
+        io.sockets.sockets.get(sockets[to])?.emit("candidateClient",{
+            candidate
+        });
     });
 });
 
@@ -211,6 +254,7 @@ const post = require('./routes/post');
 const user = require('./routes/user');
 const track = require('./routes/track');
 const group = require('./routes/group');
+const { off } = require('process');
 
 app.use('/api/auth',auth);
 app.use('/api/post',post);

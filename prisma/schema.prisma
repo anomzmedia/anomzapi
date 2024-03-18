@@ -18,6 +18,18 @@ model User {
   ownerGroups Group[] @relation("ownerGroups")
   followers Follows[] @relation("following")
   followings Follows[] @relation("follower")
+
+  fromVoiceChats VoiceChat[] @relation("fromVoiceChats")
+  toVoiceChats VoiceChat[] @relation("toVoiceChats")
+}
+
+model VoiceChat{
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  fromId String @db.ObjectId
+  from User @relation("fromVoiceChats",fields: [fromId], references: [id])
+
+  toId String @db.ObjectId
+  to User @relation("toVoiceChats",fields: [toId], references: [id])
 }
 
 model Follows{
